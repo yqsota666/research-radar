@@ -50,25 +50,40 @@ button {
 .page-panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
-.hero,
+.today-header,
 .page-title {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 12px;
 }
 
-.hero h1,
+.today-header {
+  padding: 2px 0 4px;
+}
+
+.today-header h1,
 .page-title h1 {
-  margin: 4px 0 8px;
-  font-size: 2rem;
-  line-height: 1.05;
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.15;
 }
 
-.hero p,
+.today-header span {
+  display: block;
+  margin-top: 3px;
+  color: #68736e;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.page-title h1 {
+  font-size: 1.8rem;
+}
+
 .item-card p,
 .keyword-list p,
 .settings-block p {
@@ -85,6 +100,7 @@ button {
 }
 
 .primary-action,
+.refresh-action,
 .secondary-action,
 .danger-action,
 .add-keyword button,
@@ -102,12 +118,21 @@ button {
   text-decoration: none;
 }
 
+.refresh-action {
+  width: 42px;
+  min-width: 42px;
+  padding: 0;
+  background: #173f38;
+  color: white;
+}
+
 .primary-action {
   background: #173f38;
   color: white;
 }
 
 .primary-action:disabled,
+.refresh-action:disabled,
 .secondary-action:disabled {
   opacity: 0.65;
 }
@@ -164,7 +189,7 @@ button {
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 
 .metric-grid div,
@@ -178,35 +203,36 @@ button {
 }
 
 .metric-grid div {
-  min-height: 72px;
-  padding: 12px 10px;
+  min-height: 58px;
+  padding: 9px 10px;
 }
 
 .metric-grid span {
   color: #68736e;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
+  font-weight: 750;
 }
 
 .metric-grid strong {
   display: block;
-  margin-top: 6px;
-  font-size: 1.35rem;
+  margin-top: 3px;
+  font-size: 1.15rem;
 }
 
 .source-strip {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 8px;
+  gap: 6px;
 }
 
 .source-status,
 .health-row {
-  min-height: 44px;
+  min-height: 38px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 7px;
+  padding: 8px 10px;
   border-radius: 8px;
   background: white;
   color: #4e5a55;
@@ -226,11 +252,12 @@ button {
 
 .source-status strong {
   color: #24332d;
+  font-size: 0.86rem;
 }
 
 .source-status div span {
   color: #66716c;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
 }
 
 .ok {
@@ -250,8 +277,13 @@ button {
 }
 
 h2 {
-  margin: 6px 0 0;
+  margin: 2px 0 0;
   font-size: 1.1rem;
+}
+
+.section-label {
+  color: #44514b;
+  font-size: 0.95rem;
 }
 
 .card-list,
@@ -264,6 +296,19 @@ h2 {
 .item-card {
   padding: 14px;
   min-width: 0;
+}
+
+.item-card--featured {
+  border-color: rgba(23, 63, 56, 0.22);
+  background:
+    linear-gradient(135deg, rgba(244, 249, 241, 0.95), rgba(255, 255, 255, 0.96)),
+    white;
+  box-shadow: 0 18px 34px rgba(31, 59, 50, 0.14);
+}
+
+.item-card--featured .item-title {
+  font-size: 1.22rem;
+  line-height: 1.22;
 }
 
 .item-card__top,
@@ -338,10 +383,10 @@ h2 {
 .cached-label,
 .pill {
   border-radius: 999px;
-  padding: 4px 8px;
+  padding: 3px 7px;
   background: #fff2c6;
   color: #805400;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 800;
 }
 

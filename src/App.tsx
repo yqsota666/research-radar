@@ -78,14 +78,16 @@ function SourceBadge({ sourceType }: { sourceType: SourceType }) {
 function ItemCard({
   item,
   onOpen,
-  onToggleSaved
+  onToggleSaved,
+  featured = false
 }: {
   item: RadarItem;
   onOpen: (item: RadarItem) => void;
   onToggleSaved: (itemId: string) => void;
+  featured?: boolean;
 }) {
   return (
-    <article className="item-card">
+    <article className={featured ? 'item-card item-card--featured' : 'item-card'}>
       <div className="item-card__top">
         <SourceBadge sourceType={item.sourceType} />
         <strong>{item.relevanceScore}</strong>
@@ -228,22 +230,23 @@ export default function App({ llmEnv = import.meta.env, gatewayFetcher = fetch }
   }
 
   function renderToday() {
+    const [featuredMatch, ...secondaryMatches] = summary.topMatches;
+
     return (
       <section className="page-panel">
-        <div className="hero">
+        <div className="today-header">
           <div>
-            <span className="eyebrow">Mobile intelligence radar</span>
             <h1>Research Radar</h1>
-            <p>Ranked research, repositories, models, and AI media for your active topics.</p>
+            <span>Updated {formatTime(state.lastUpdatedAt)}</span>
           </div>
           <button
-            className="primary-action"
+            aria-label={state.isRefreshing ? 'Refreshing results' : 'Refresh results'}
+            className="refresh-action"
             type="button"
             disabled={state.isRefreshing}
             onClick={handleRefresh}
           >
-            {state.isRefreshing ? <Loader2 size={18} className="spin" /> : <RefreshCw size={18} />}
-            Refresh
+            {state.isRefreshing ? <Loader2 size={19} className="spin" /> : <RefreshCw size={19} />}
           </button>
         </div>
 
@@ -253,6 +256,28 @@ export default function App({ llmEnv = import.meta.env, gatewayFetcher = fetch }
             .map((keyword) => (
               <span key={keyword.id}>{keyword.term}</span>
             ))}
+        </div>
+
+        <h2>Top Matches</h2>
+        <div className="card-list">
+          {featuredMatch ? (
+            <ItemCard
+              item={featuredMatch}
+              featured
+              onOpen={(nextItem) => setSelectedItemId(nextItem.id)}
+              onToggleSaved={handleToggleSaved}
+            />
+          ) : (
+            <p className="empty">No ranked matches yet.</p>
+          )}
+          {secondaryMatches.map((item) => (
+            <ItemCard
+              key={item.id}
+              item={item}
+              onOpen={(nextItem) => setSelectedItemId(nextItem.id)}
+              onToggleSaved={handleToggleSaved}
+            />
+          ))}
         </div>
 
         <div className="metric-grid">
@@ -274,6 +299,7 @@ export default function App({ llmEnv = import.meta.env, gatewayFetcher = fetch }
           </div>
         </div>
 
+        <h2 className="section-label">Sources</h2>
         <section className="source-strip" aria-label="Source status">
           {Object.values(state.sourceStatuses).map((source) => (
             <div key={source.sourceType} className={`source-status ${statusTone(source.status)}`}>
@@ -286,18 +312,6 @@ export default function App({ llmEnv = import.meta.env, gatewayFetcher = fetch }
             </div>
           ))}
         </section>
-
-        <h2>Top Matches</h2>
-        <div className="card-list">
-          {summary.topMatches.map((item) => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              onOpen={(nextItem) => setSelectedItemId(nextItem.id)}
-              onToggleSaved={handleToggleSaved}
-            />
-          ))}
-        </div>
       </section>
     );
   }

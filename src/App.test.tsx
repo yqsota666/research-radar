@@ -30,6 +30,19 @@ describe('Research Radar app', () => {
     expect(within(sourceStatus).getAllByText(/Updated/).length).toBeGreaterThan(0);
   });
 
+  it('prioritizes top matches before source health and keeps refresh compact', () => {
+    render(<App />);
+
+    const refreshButton = screen.getByRole('button', { name: 'Refresh results' });
+    const topMatches = screen.getByRole('heading', { name: 'Top Matches' });
+    const sourceStatus = screen.getByLabelText('Source status');
+
+    expect(refreshButton).not.toHaveTextContent('Refresh');
+    expect(
+      topMatches.compareDocumentPosition(sourceStatus) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
   it('switches to Feed and filters by Papers', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -178,7 +191,7 @@ describe('Research Radar app', () => {
     });
     render(<App />);
 
-    await user.click(screen.getByRole('button', { name: 'Refresh' }));
+    await user.click(screen.getByRole('button', { name: 'Refresh results' }));
     await user.click(screen.getByRole('button', { name: 'Settings' }));
 
     expect(screen.getByText('GitHub returned 3 items')).toBeInTheDocument();
