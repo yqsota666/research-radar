@@ -21,11 +21,12 @@ npm run build
 ## Demo Flow
 
 1. Open Today and review active keywords, source status, metrics, and Top Matches.
-2. Use Feed to filter all normalized cards by source.
-3. Open a card detail and save it.
-4. Check Saved to confirm the reading list persists locally.
-5. Add a keyword in Keywords and review related-term suggestions.
-6. Open Settings to view LLM configuration guidance and source health.
+2. Confirm Top Matches diversity by checking that Today represents multiple keywords when eligible items exist.
+3. Use Feed to filter all normalized cards by source with compact mobile-safe source labels.
+4. Open a card detail and save it.
+5. Check Saved to confirm the reading list persists locally.
+6. Add a keyword in Keywords and review related-term suggestions.
+7. Open Settings to view LLM configuration guidance, source health, and run Check Gateway manually.
 
 ## Live Refresh and LLM Notes
 

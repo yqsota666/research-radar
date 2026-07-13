@@ -18,6 +18,11 @@ body {
   min-height: 100vh;
 }
 
+html,
+body {
+  overflow-x: hidden;
+}
+
 button,
 input,
 select {
@@ -125,12 +130,19 @@ button {
 .segmented {
   display: flex;
   gap: 8px;
+  max-width: 100%;
+  min-width: 0;
   padding-bottom: 2px;
 }
 
 .keyword-row,
 .tag-row {
   overflow-x: auto;
+}
+
+.tag-row {
+  flex-wrap: wrap;
+  overflow-x: visible;
 }
 
 .segmented {
@@ -251,6 +263,7 @@ h2 {
 
 .item-card {
   padding: 14px;
+  min-width: 0;
 }
 
 .item-card__top,

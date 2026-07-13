@@ -10,5 +10,7 @@ describe('README live refresh documentation', () => {
     expect(readme).toContain('arXiv browser-safe fallback');
     expect(readme).toContain('VITE_OPENAI_API_KEY');
     expect(readme).toContain('does not display the API key');
+    expect(readme).toContain('Top Matches diversity');
+    expect(readme).toContain('Check Gateway');
   });
 });
