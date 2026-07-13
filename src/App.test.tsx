@@ -42,6 +42,17 @@ describe('Research Radar app', () => {
     expect(screen.queryByText('open-agent/runtime')).not.toBeInTheDocument();
   });
 
+  it('uses compact Feed source filter labels for mobile discoverability', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: 'Feed' }));
+
+    expect(screen.getByRole('button', { name: 'Papers' })).toHaveTextContent('Paper');
+    expect(screen.getByRole('button', { name: 'Hugging Face' })).toHaveTextContent('HF');
+    expect(screen.getByRole('button', { name: 'WeChat' })).toBeInTheDocument();
+  });
+
   it('saves an item and shows it in Saved', async () => {
     const user = userEvent.setup();
     render(<App />);

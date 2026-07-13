@@ -41,13 +41,13 @@ const tabs: Array<{ id: Tab; label: string; icon: typeof Home }> = [
   { id: 'settings', label: 'Settings', icon: Settings }
 ];
 
-const sourceTabs: Array<{ value: FeedFilter['sourceType']; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: 'news', label: 'News' },
-  { value: 'paper', label: 'Papers' },
-  { value: 'github', label: 'GitHub' },
-  { value: 'huggingface', label: 'Hugging Face' },
-  { value: 'wechat', label: 'WeChat' }
+const sourceTabs: Array<{ value: FeedFilter['sourceType']; label: string; shortLabel: string }> = [
+  { value: 'all', label: 'All', shortLabel: 'All' },
+  { value: 'news', label: 'News', shortLabel: 'News' },
+  { value: 'paper', label: 'Papers', shortLabel: 'Paper' },
+  { value: 'github', label: 'GitHub', shortLabel: 'GitHub' },
+  { value: 'huggingface', label: 'Hugging Face', shortLabel: 'HF' },
+  { value: 'wechat', label: 'WeChat', shortLabel: 'WeChat' }
 ];
 
 interface AppProps {
@@ -323,11 +323,12 @@ export default function App({ llmEnv = import.meta.env, gatewayFetcher = fetch }
           {sourceTabs.map((tab) => (
             <button
               key={tab.value}
+              aria-label={tab.label}
               className={feedFilter.sourceType === tab.value ? 'active' : ''}
               type="button"
               onClick={() => setFeedFilter((current) => ({ ...current, sourceType: tab.value }))}
             >
-              {tab.label}
+              {tab.shortLabel}
             </button>
           ))}
         </div>
