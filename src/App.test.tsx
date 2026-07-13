@@ -20,6 +20,16 @@ describe('Research Radar app', () => {
     expect(screen.getAllByText('LLM Agent').length).toBeGreaterThan(0);
   });
 
+  it('shows source status labels and update time on Today', () => {
+    render(<App />);
+
+    const sourceStatus = screen.getByLabelText('Source status');
+
+    expect(within(sourceStatus).getAllByText('fetched').length).toBeGreaterThan(0);
+    expect(within(sourceStatus).getByText('cached')).toBeInTheDocument();
+    expect(within(sourceStatus).getAllByText(/Updated/).length).toBeGreaterThan(0);
+  });
+
   it('switches to Feed and filters by Papers', async () => {
     const user = userEvent.setup();
     render(<App />);

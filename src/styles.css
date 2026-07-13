@@ -182,7 +182,24 @@ button {
 }
 
 .source-status {
-  justify-content: flex-start;
+  justify-content: space-between;
+}
+
+.source-status div {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.source-status strong {
+  color: #24332d;
+}
+
+.source-status div span {
+  color: #66716c;
+  font-size: 0.78rem;
 }
 
 .ok {

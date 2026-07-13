@@ -257,7 +257,11 @@ export default function App() {
           {Object.values(state.sourceStatuses).map((source) => (
             <div key={source.sourceType} className={`source-status ${statusTone(source.status)}`}>
               <CheckCircle2 size={16} />
-              <span>{source.label}</span>
+              <div>
+                <strong>{source.label}</strong>
+                <span>Updated {formatTime(source.lastFetchedAt ?? state.lastUpdatedAt)}</span>
+              </div>
+              <span className={`pill ${statusTone(source.status)}`}>{source.status}</span>
             </div>
           ))}
         </section>
