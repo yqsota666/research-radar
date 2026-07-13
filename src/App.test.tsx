@@ -1,11 +1,15 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
 describe('Research Radar app', () => {
   beforeEach(() => {
     window.localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('renders Today as the default mobile dashboard', () => {
@@ -65,5 +69,57 @@ describe('Research Radar app', () => {
     expect(within(statusList).getByText('GitHub')).toBeInTheDocument();
     expect(within(statusList).getByText('Machine Heart / WeChat')).toBeInTheDocument();
     expect(screen.getByText('OPENAI_API_KEY')).toBeInTheDocument();
+  });
+
+  it('refreshes through the live source coordinator and updates source health', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'fetch').mockImplementation(async (url) => {
+      const href = String(url);
+      if (href.includes('arxiv')) {
+        return new Response(
+          '<feed><entry><id>arxiv-live</id><title>Live Agent Paper</title><summary>LLM Agent tool use.</summary><published>2026-07-13T00:00:00Z</published><author><name>Grace Hopper</name></author></entry></feed>'
+        );
+      }
+      if (href.includes('github')) {
+        return new Response(
+          JSON.stringify({
+            items: [
+              {
+                id: 99,
+                full_name: 'live/agent-runtime',
+                html_url: 'https://github.com/live/agent-runtime',
+                description: 'LLM Agent runtime',
+                updated_at: '2026-07-13T00:00:00Z',
+                stargazers_count: 88,
+                language: 'TypeScript',
+                owner: { login: 'live' }
+              }
+            ]
+          })
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          hits: [
+            {
+              objectID: 'live-news',
+              title: 'Live agent research update',
+              url: 'https://example.com/live-agent',
+              story_text: 'LLM Agent research update',
+              created_at: '2026-07-13T00:00:00Z',
+              author: 'newsbot'
+            }
+          ]
+        })
+      );
+    });
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: 'Refresh' }));
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
+
+    expect(screen.getByText('GitHub returned 1 item')).toBeInTheDocument();
+    expect(screen.getByText('arXiv returned 1 item')).toBeInTheDocument();
+    expect(screen.getByText('Hacker News returned 1 item')).toBeInTheDocument();
   });
 });

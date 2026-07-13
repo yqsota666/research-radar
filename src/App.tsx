@@ -22,7 +22,8 @@ import {
   toggleSaved
 } from './domain/radar';
 import type { AppState, FeedFilter, RadarItem, SourceType } from './domain/types';
-import { runDemoRefresh, suggestRelatedTerms } from './services/refresh';
+import { runLiveRefresh } from './services/liveRefresh';
+import { suggestRelatedTerms } from './services/refresh';
 import { clearFeedCache, loadState, saveState } from './services/storage';
 
 type Tab = 'today' | 'feed' | 'keywords' | 'saved' | 'settings';
@@ -180,7 +181,7 @@ export default function App() {
 
   async function handleRefresh() {
     setState((current) => ({ ...current, isRefreshing: true }));
-    const refreshed = await runDemoRefresh(state);
+    const refreshed = await runLiveRefresh(state);
     setState(refreshed);
   }
 
