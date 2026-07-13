@@ -83,4 +83,96 @@ describe('live refresh coordinator', () => {
     expect(refreshed.items.some((item) => item.isCachedSample)).toBe(true);
     expect(refreshed.items.some((item) => item.title === 'live-agent/runtime')).toBe(true);
   });
+
+  it('refreshes every enabled keyword using only that keyword selected sources', async () => {
+    const calls: Array<{ sourceName: string; keyword: string }> = [];
+    const githubAdapter: SourceAdapter = {
+      sourceType: 'github',
+      sourceName: 'GitHub',
+      async fetch(keyword) {
+        calls.push({ sourceName: 'GitHub', keyword });
+        return {
+          sourceType: 'github',
+          sourceName: 'GitHub',
+          fetchedAt: '2026-07-13T08:00:00.000Z',
+          status: 'success',
+          items: [
+            {
+              externalId: `github:${keyword}`,
+              title: `${keyword} repo`,
+              url: `https://github.com/example/${keyword.toLowerCase().replaceAll(' ', '-')}`,
+              publishedAt: '2026-07-13T08:00:00.000Z',
+              authorsOrOwner: 'example',
+              rawSnippet: `${keyword} implementation`,
+              sourceType: 'github',
+              sourceName: 'GitHub',
+              metadata: {}
+            }
+          ]
+        };
+      }
+    };
+    const paperAdapter: SourceAdapter = {
+      sourceType: 'paper',
+      sourceName: 'arXiv',
+      async fetch(keyword) {
+        calls.push({ sourceName: 'arXiv', keyword });
+        return {
+          sourceType: 'paper',
+          sourceName: 'arXiv',
+          fetchedAt: '2026-07-13T08:00:00.000Z',
+          status: 'success',
+          items: [
+            {
+              externalId: `arxiv:${keyword}`,
+              title: `${keyword} paper`,
+              url: `https://arxiv.org/abs/${keyword.toLowerCase().replaceAll(' ', '-')}`,
+              publishedAt: '2026-07-13T08:00:00.000Z',
+              authorsOrOwner: 'researcher',
+              rawSnippet: `${keyword} research`,
+              sourceType: 'paper',
+              sourceName: 'arXiv',
+              metadata: {}
+            }
+          ]
+        };
+      }
+    };
+    const initial = createInitialState();
+    initial.keywords = [
+      {
+        id: 'agent',
+        term: 'LLM Agent',
+        enabled: true,
+        sources: ['github'],
+        relatedTerms: []
+      },
+      {
+        id: 'rag',
+        term: 'RAG',
+        enabled: true,
+        sources: ['paper'],
+        relatedTerms: []
+      },
+      {
+        id: 'diffusion',
+        term: 'Diffusion',
+        enabled: false,
+        sources: ['github', 'paper'],
+        relatedTerms: []
+      }
+    ];
+
+    const refreshed = await runLiveRefresh(initial, {
+      adapters: [githubAdapter, paperAdapter],
+      now: '2026-07-13T08:00:00.000Z'
+    });
+
+    expect(calls).toEqual([
+      { sourceName: 'GitHub', keyword: 'LLM Agent' },
+      { sourceName: 'arXiv', keyword: 'RAG' }
+    ]);
+    expect(refreshed.items.some((item) => item.title === 'LLM Agent repo' && item.matchedKeyword === 'LLM Agent')).toBe(true);
+    expect(refreshed.items.some((item) => item.title === 'RAG paper' && item.matchedKeyword === 'RAG')).toBe(true);
+  });
 });

@@ -62,6 +62,35 @@ function failure(
   };
 }
 
+function arxivCachedFallback(
+  keyword: string,
+  relatedTerms: string[],
+  fetchedAt: string,
+  error: unknown
+): SourceFetchResult {
+  const message = error instanceof Error ? error.message : String(error);
+  return {
+    sourceType: 'paper',
+    sourceName: 'arXiv',
+    items: [
+      {
+        externalId: `cached-arxiv-${keyword.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+        title: `Cached paper sample for ${keyword}`,
+        url: 'https://arxiv.org/',
+        publishedAt: fetchedAt,
+        authorsOrOwner: 'cached demo',
+        rawSnippet: `Cached fallback paper for ${keyword}. Related terms: ${relatedTerms.join(', ') || keyword}.`,
+        sourceType: 'paper',
+        sourceName: 'arXiv cached fallback',
+        metadata: { keyword, cached: true }
+      }
+    ],
+    fetchedAt,
+    status: 'cached',
+    errorMessage: `arXiv unavailable; using browser-safe cached fallback. ${message}`
+  };
+}
+
 async function ensureOk(response: Response, sourceName: string): Promise<Response> {
   if (!response.ok) {
     throw new Error(`${sourceName} returned HTTP ${response.status}`);
@@ -107,7 +136,7 @@ export const arxivAdapter: SourceAdapter = {
       });
       return { sourceType: 'paper', sourceName: 'arXiv', items, fetchedAt, status: 'success' };
     } catch (error) {
-      return failure('paper', 'arXiv', fetchedAt, error);
+      return arxivCachedFallback(keyword, relatedTerms, fetchedAt, error);
     }
   }
 };

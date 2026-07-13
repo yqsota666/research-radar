@@ -102,4 +102,23 @@ describe('source adapters', () => {
     expect(result.items).toEqual([]);
     expect(result.errorMessage).toContain('GitHub');
   });
+
+  it('returns a cached paper fallback when arXiv is unavailable in the browser', async () => {
+    const fetcher = async () => {
+      throw new TypeError('Failed to fetch');
+    };
+
+    const result = await arxivAdapter.fetch('RAG', ['retrieval'], {
+      fetcher,
+      now: '2026-07-13T08:00:00.000Z'
+    });
+
+    expect(result.status).toBe('cached');
+    expect(result.items[0]).toMatchObject({
+      sourceType: 'paper',
+      sourceName: 'arXiv cached fallback',
+      title: 'Cached paper sample for RAG'
+    });
+    expect(result.errorMessage).toContain('browser-safe cached fallback');
+  });
 });

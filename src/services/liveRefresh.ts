@@ -14,6 +14,12 @@ export interface LiveRefreshOptions {
   fetcher?: typeof fetch;
 }
 
+interface RefreshJob {
+  adapter: SourceAdapter;
+  keyword: string;
+  relatedTerms: string[];
+}
+
 const sourceLabels: Record<SourceType, string> = {
   news: 'Technology News',
   paper: 'Academic Papers',
@@ -90,18 +96,27 @@ function preserveSaved(nextItems: RadarItem[], previousItems: RadarItem[]): Rada
   return [...merged, ...missingSaved];
 }
 
-function statusFromResult(result: SourceFetchResult): SourceStatus {
-  const status = result.status === 'success' || result.status === 'partial' ? 'fetched' : result.status;
+function statusFromResults(sourceType: SourceType, results: SourceFetchResult[]): SourceStatus {
+  const newest = results.at(-1);
+  const failed = results.filter((result) => result.status === 'failed');
+  const cached = results.filter((result) => result.status === 'cached');
+  const totalItems = results.reduce((sum, result) => sum + result.items.length, 0);
+  const status =
+    failed.length === results.length ? 'failed' : cached.length > 0 ? 'cached' : 'fetched';
+  const sourceName = newest?.sourceName ?? sourceLabels[sourceType];
+
   return {
-    sourceType: result.sourceType,
-    label: sourceLabels[result.sourceType],
+    sourceType,
+    label: sourceLabels[sourceType],
     status,
     message:
-      result.status === 'failed'
-        ? result.errorMessage ?? `${result.sourceName} failed`
-        : `${result.sourceName} returned ${result.items.length} item${result.items.length === 1 ? '' : 's'}`,
-    lastFetchedAt: result.fetchedAt,
-    nextRetryAt: result.nextRetryAt
+      status === 'failed'
+        ? failed[0]?.errorMessage ?? `${sourceName} failed`
+        : status === 'cached'
+          ? `${sourceName} using cached fallback with ${totalItems} item${totalItems === 1 ? '' : 's'}`
+          : `${sourceName} returned ${totalItems} item${totalItems === 1 ? '' : 's'}`,
+    lastFetchedAt: newest?.fetchedAt,
+    nextRetryAt: newest?.nextRetryAt
   };
 }
 
@@ -115,21 +130,45 @@ export async function runLiveRefresh(
 ): Promise<AppState> {
   const now = options.now ?? new Date().toISOString();
   const adapters = options.adapters ?? stableSourceAdapters;
-  const activeKeyword = state.keywords.find((keyword) => keyword.enabled) ?? state.keywords[0];
-  const relatedTerms = activeKeyword?.relatedTerms ?? [];
-  const keyword = activeKeyword?.term ?? 'LLM Agent';
+  const adaptersBySource = new Map(adapters.map((adapter) => [adapter.sourceType, adapter]));
+  const enabledKeywords = state.keywords.filter((keyword) => keyword.enabled);
+  const refreshJobs: RefreshJob[] = enabledKeywords.flatMap((keyword) =>
+    keyword.sources.flatMap((sourceType) => {
+      const adapter = adaptersBySource.get(sourceType);
+      return adapter
+        ? [
+            {
+              adapter,
+              keyword: keyword.term,
+              relatedTerms: keyword.relatedTerms
+            }
+          ]
+        : [];
+    })
+  );
 
   const results = await Promise.all(
-    adapters.map((adapter) => adapter.fetch(keyword, relatedTerms, { now, fetcher: options.fetcher }))
+    refreshJobs.map(async (job) => ({
+      keyword: job.keyword,
+      relatedTerms: job.relatedTerms,
+      result: await job.adapter.fetch(job.keyword, job.relatedTerms, {
+        now,
+        fetcher: options.fetcher
+      })
+    }))
   );
-  const liveItems = results.flatMap((result) =>
+  const liveItems = results.flatMap(({ result, keyword, relatedTerms }) =>
     result.items.map((item) => rawToRadarItem(item, keyword, relatedTerms, result.fetchedAt))
   );
   const nextItems = preserveSaved(dedupe([...liveItems, ...fallbackItems(now)]), state.items);
   const sourceStatuses = { ...state.sourceStatuses };
+  const resultsBySource = new Map<SourceType, SourceFetchResult[]>();
 
-  for (const result of results) {
-    sourceStatuses[result.sourceType] = statusFromResult(result);
+  for (const { result } of results) {
+    resultsBySource.set(result.sourceType, [...(resultsBySource.get(result.sourceType) ?? []), result]);
+  }
+  for (const [sourceType, sourceResults] of resultsBySource) {
+    sourceStatuses[sourceType] = statusFromResults(sourceType, sourceResults);
   }
   sourceStatuses.wechat = {
     sourceType: 'wechat',
