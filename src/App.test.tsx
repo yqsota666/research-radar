@@ -69,6 +69,8 @@ describe('Research Radar app', () => {
     expect(within(statusList).getByText('GitHub')).toBeInTheDocument();
     expect(within(statusList).getByText('Machine Heart / WeChat')).toBeInTheDocument();
     expect(screen.getByText('OPENAI_API_KEY')).toBeInTheDocument();
+    expect(screen.getByText('Missing API key')).toBeInTheDocument();
+    expect(screen.queryByText(/sk-test/)).not.toBeInTheDocument();
   });
 
   it('refreshes through the live source coordinator and updates source health', async () => {
@@ -118,8 +120,8 @@ describe('Research Radar app', () => {
     await user.click(screen.getByRole('button', { name: 'Refresh' }));
     await user.click(screen.getByRole('button', { name: 'Settings' }));
 
-    expect(screen.getByText('GitHub returned 1 item')).toBeInTheDocument();
-    expect(screen.getByText('arXiv returned 1 item')).toBeInTheDocument();
-    expect(screen.getByText('Hacker News returned 1 item')).toBeInTheDocument();
+    expect(screen.getByText('GitHub returned 3 items')).toBeInTheDocument();
+    expect(screen.getByText('arXiv returned 3 items')).toBeInTheDocument();
+    expect(screen.getByText('Hacker News returned 3 items')).toBeInTheDocument();
   });
 });

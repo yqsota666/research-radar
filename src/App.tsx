@@ -23,6 +23,7 @@ import {
 } from './domain/radar';
 import type { AppState, FeedFilter, RadarItem, SourceType } from './domain/types';
 import { runLiveRefresh } from './services/liveRefresh';
+import { getLlmConfigStatus } from './services/llmConfig';
 import { suggestRelatedTerms } from './services/refresh';
 import { clearFeedCache, loadState, saveState } from './services/storage';
 
@@ -174,6 +175,7 @@ export default function App() {
   );
   const selectedItem = state.items.find((item) => item.id === selectedItemId) ?? null;
   const savedItems = state.items.filter((item) => item.saved);
+  const llmStatus = getLlmConfigStatus();
 
   function handleToggleSaved(itemId: string) {
     setState((current) => ({ ...current, items: toggleSaved(current.items, itemId) }));
@@ -411,8 +413,17 @@ export default function App() {
         </div>
         <section className="settings-block">
           <h2>LLM Gateway</h2>
+          <div className="health-row">
+            <div>
+              <strong>{llmStatus.label}</strong>
+              <span>{llmStatus.message}</span>
+            </div>
+            <span className={`pill ${llmStatus.status === 'configured' ? 'ok' : 'warn'}`}>
+              {llmStatus.status}
+            </span>
+          </div>
           <p className="muted">OPENAI_API_KEY</p>
-          <p className="muted">OPENAI_BASE_URL=https://gmncode.cn/v1</p>
+          <p className="muted">OPENAI_BASE_URL={llmStatus.safeBaseUrl}</p>
         </section>
         <section className="settings-block" aria-label="Source health">
           <h2>Source Health</h2>
