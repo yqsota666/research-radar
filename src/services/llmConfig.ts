@@ -1,4 +1,9 @@
-export type LlmConfigState = 'missing-key' | 'invalid-base-url' | 'configured';
+export type LlmConfigState =
+  | 'missing-key'
+  | 'invalid-base-url'
+  | 'configured'
+  | 'connected'
+  | 'last-check-failed';
 
 export interface LlmConfigStatus {
   status: LlmConfigState;
@@ -53,4 +58,41 @@ export function getLlmConfigStatus(env: LlmEnv = import.meta.env): LlmConfigStat
     safeBaseUrl: baseUrl,
     message: 'Gateway configuration is present. The key value is not displayed.'
   };
+}
+
+export async function checkLlmGateway(
+  env: LlmEnv = import.meta.env,
+  fetcher: typeof fetch = fetch
+): Promise<LlmConfigStatus> {
+  const config = getLlmConfigStatus(env);
+
+  if (config.status !== 'configured') {
+    return config;
+  }
+
+  const apiKey = env.VITE_OPENAI_API_KEY?.trim() ?? '';
+  const modelsUrl = `${config.safeBaseUrl.replace(/\/$/, '')}/models`;
+
+  try {
+    const response = await fetcher(modelsUrl, {
+      headers: { Authorization: `Bearer ${apiKey}` }
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return {
+      ...config,
+      status: 'connected',
+      label: 'Connected',
+      message: 'Gateway check succeeded. The API key value is not displayed.'
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      ...config,
+      status: 'last-check-failed',
+      label: 'Last check failed',
+      message: `Gateway check failed: ${message}. Fetched source results remain visible.`
+    };
+  }
 }

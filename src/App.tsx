@@ -23,7 +23,11 @@ import {
 } from './domain/radar';
 import type { AppState, FeedFilter, RadarItem, SourceType } from './domain/types';
 import { runLiveRefresh } from './services/liveRefresh';
-import { getLlmConfigStatus } from './services/llmConfig';
+import {
+  checkLlmGateway,
+  getLlmConfigStatus,
+  type LlmEnv
+} from './services/llmConfig';
 import { suggestRelatedTerms } from './services/refresh';
 import { clearFeedCache, loadState, saveState } from './services/storage';
 
@@ -45,6 +49,11 @@ const sourceTabs: Array<{ value: FeedFilter['sourceType']; label: string }> = [
   { value: 'huggingface', label: 'Hugging Face' },
   { value: 'wechat', label: 'WeChat' }
 ];
+
+interface AppProps {
+  llmEnv?: LlmEnv;
+  gatewayFetcher?: typeof fetch;
+}
 
 function formatTime(value: string): string {
   return new Intl.DateTimeFormat('en', {
@@ -153,11 +162,13 @@ function DetailSheet({
   );
 }
 
-export default function App() {
+export default function App({ llmEnv = import.meta.env, gatewayFetcher = fetch }: AppProps = {}) {
   const [state, setState] = useState<AppState>(() => loadState());
   const [activeTab, setActiveTab] = useState<Tab>('today');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [newKeyword, setNewKeyword] = useState('');
+  const [llmStatus, setLlmStatus] = useState(() => getLlmConfigStatus(llmEnv));
+  const [isCheckingGateway, setIsCheckingGateway] = useState(false);
   const [feedFilter, setFeedFilter] = useState<FeedFilter>({
     sourceType: 'all',
     query: '',
@@ -175,7 +186,10 @@ export default function App() {
   );
   const selectedItem = state.items.find((item) => item.id === selectedItemId) ?? null;
   const savedItems = state.items.filter((item) => item.saved);
-  const llmStatus = getLlmConfigStatus();
+
+  useEffect(() => {
+    setLlmStatus(getLlmConfigStatus(llmEnv));
+  }, [llmEnv]);
 
   function handleToggleSaved(itemId: string) {
     setState((current) => ({ ...current, items: toggleSaved(current.items, itemId) }));
@@ -204,6 +218,13 @@ export default function App() {
       ]
     }));
     setNewKeyword('');
+  }
+
+  async function handleCheckGateway() {
+    setIsCheckingGateway(true);
+    const nextStatus = await checkLlmGateway(llmEnv, gatewayFetcher);
+    setLlmStatus(nextStatus);
+    setIsCheckingGateway(false);
   }
 
   function renderToday() {
@@ -426,6 +447,14 @@ export default function App() {
               {llmStatus.status}
             </span>
           </div>
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={isCheckingGateway}
+            onClick={handleCheckGateway}
+          >
+            {isCheckingGateway ? 'Checking...' : 'Check Gateway'}
+          </button>
           <p className="muted">OPENAI_API_KEY</p>
           <p className="muted">OPENAI_BASE_URL={llmStatus.safeBaseUrl}</p>
         </section>

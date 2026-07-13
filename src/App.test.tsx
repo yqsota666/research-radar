@@ -83,6 +83,46 @@ describe('Research Radar app', () => {
     expect(screen.queryByText(/sk-test/)).not.toBeInTheDocument();
   });
 
+  it('checks a configured LLM gateway from Settings', async () => {
+    const user = userEvent.setup();
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({ data: [] })));
+    render(
+      <App
+        llmEnv={{
+          VITE_OPENAI_API_KEY: 'sk-test-secret',
+          VITE_OPENAI_BASE_URL: 'https://gmncode.cn/v1'
+        }}
+        gatewayFetcher={fetcher}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    await user.click(screen.getByRole('button', { name: 'Check Gateway' }));
+
+    expect(await screen.findByText('Connected')).toBeInTheDocument();
+    expect(screen.queryByText(/sk-test-secret/)).not.toBeInTheDocument();
+  });
+
+  it('shows a non-fatal failed gateway check state', async () => {
+    const user = userEvent.setup();
+    const fetcher = vi.fn(async () => new Response('bad gateway', { status: 502 }));
+    render(
+      <App
+        llmEnv={{
+          VITE_OPENAI_API_KEY: 'sk-test-secret',
+          VITE_OPENAI_BASE_URL: 'https://gmncode.cn/v1'
+        }}
+        gatewayFetcher={fetcher}
+      />
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    await user.click(screen.getByRole('button', { name: 'Check Gateway' }));
+
+    expect(await screen.findByText('Last check failed')).toBeInTheDocument();
+    expect(screen.getByText(/Fetched source results remain visible/)).toBeInTheDocument();
+  });
+
   it('refreshes through the live source coordinator and updates source health', async () => {
     const user = userEvent.setup();
     vi.spyOn(window, 'fetch').mockImplementation(async (url) => {
