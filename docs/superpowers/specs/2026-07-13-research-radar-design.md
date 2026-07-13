@@ -308,10 +308,27 @@ saved
 fetchedAt
 ```
 
+Recommended engineering extensions:
+
+```text
+externalId
+sourceStatus: pending | fetched | failed | cached
+sourceUpdatedAt
+analysisStatus: pending | analyzing | done | failed
+analysisError
+scoreVersion
+isCachedSample
+createdAt
+updatedAt
+```
+
 Benefits:
 - Today and Feed can render all content with one card component.
 - Saved can reuse the same item structure.
 - LLM output is source-independent.
+- Status fields let the UI show partially loaded results instead of waiting for every source and every LLM call to finish.
+- `externalId` and URL-based fingerprints make cross-source deduplication possible.
+- `scoreVersion` allows future prompt or scoring changes without confusing old and new scores.
 
 ## 7. Interaction Flow
 
@@ -420,7 +437,238 @@ Enhanced demo:
 - Add source health indicators.
 - Add related-term suggestions from the LLM.
 
-## 10. Demo Video Script
+## 10. Engineering Supplement
+
+This section adds implementation guidance from a technical perspective. The goal is to make the demo feel smooth on mobile while keeping the backend simple enough for a course project.
+
+### 10.1 Recommended Architecture
+
+Use a three-layer structure:
+
+1. Mobile UI layer:
+   - Pages, cards, filters, refresh controls, saved list, and local persistence.
+   - Reads from a local normalized item store instead of directly waiting on network requests.
+
+2. Application service layer:
+   - Keyword manager.
+   - Refresh coordinator.
+   - Source fetcher registry.
+   - LLM analysis queue.
+   - Cache and deduplication helpers.
+
+3. External integration layer:
+   - Source-specific clients for RSS/news, arXiv, GitHub, Hugging Face, and Chinese AI media.
+   - OpenAI-compatible LLM client.
+   - Optional lightweight proxy backend if direct mobile requests hit CORS, API key, rate-limit, or scraping limitations.
+
+Recommendation:
+- For a fast demo, keep keyword and saved data local on the device.
+- Put source fetching and LLM calls behind one service interface even if they initially run inside the app.
+- If API key exposure or unstable crawling becomes a concern, move only the fetch/analyze service to a small backend instead of redesigning the whole app.
+
+### 10.2 Frontend Smoothness Requirements
+
+The app should not feel blocked by slow internet or LLM latency.
+
+Required UI behavior:
+- Show cached or last successful results immediately when the app opens.
+- Use pull-to-refresh on Today and Feed.
+- Refresh per source in parallel and update source status independently.
+- Render raw fetched cards first when possible, then fill empty analysis fields with LLM summary, tags, score, and reason after analysis completes.
+- Keep list scroll position stable while new results arrive.
+- Show skeleton cards during initial load and small inline spinners for cards still being analyzed.
+- Use optimistic UI for Save and Unsave, then persist locally.
+- Disable repeated refresh taps while a refresh is already running, but allow cancel or retry after failure.
+- Show per-source status in Settings and Today, for example `GitHub updated`, `arXiv analyzing`, `WeChat using cached sample`.
+
+Recommended mobile states:
+- Empty state: no keyword or no matching result.
+- Loading state: first fetch or first analysis.
+- Partial success state: some sources succeeded and some failed.
+- Cached state: showing previous results because live fetch failed.
+- Rate-limited state: show clear source-level message and retry time if known.
+
+Important UI opinion:
+Today should prioritize clarity over completeness. Feed can show all items, but Today should show only high-confidence cards and should never be visually overwhelmed by low-score or still-analyzing content.
+
+### 10.3 Backend / Service Refresh Flow
+
+The refresh flow should be incremental and observable.
+
+Recommended flow:
+
+1. User taps refresh or app starts scheduled manual refresh.
+2. Refresh coordinator reads enabled keywords and selected sources.
+3. For each `(keyword, source)` pair, enqueue a fetch job.
+4. Fetch jobs run in parallel with a small concurrency limit.
+5. Each source adapter normalizes results into the unified data model.
+6. Deduplication removes repeated items by URL, source-specific ID, title similarity, and publish date.
+7. New or changed items are stored with `analysisStatus = pending`.
+8. LLM analysis jobs run in batches or small parallel groups.
+9. Each analysis result updates the item summary, tags, score, reason, and `analysisStatus`.
+10. UI receives updates through state management and re-renders affected cards only.
+
+Concurrency guidance:
+- Fetch concurrency: 3 to 5 source requests at a time.
+- LLM analysis concurrency: 1 to 3 requests at a time to avoid rate-limit failures.
+- Timeout per source request: 8 to 12 seconds.
+- Timeout per LLM request: 20 to 40 seconds.
+- A failed source must not fail the whole refresh.
+
+For demo stability:
+- Always keep a small cached sample set for unstable sources.
+- Prefer real-time fetch for stable sources: arXiv, GitHub, and RSS/news.
+- Mark fallback sample items with `isCachedSample = true` so the demo remains honest.
+
+### 10.4 Source Adapter Contract
+
+Every source should implement the same internal contract:
+
+```text
+fetch(keyword, relatedTerms, options) -> SourceFetchResult
+```
+
+`SourceFetchResult` should include:
+
+```text
+sourceType
+sourceName
+items[]
+fetchedAt
+status: success | partial | failed | cached
+errorMessage
+nextRetryAt
+```
+
+Each raw item should be normalized before it enters the shared store:
+
+```text
+externalId
+title
+url
+publishedAt
+authorsOrOwner
+rawSnippet
+metadata
+```
+
+Adapter rules:
+- Adapters should never return UI-specific objects.
+- Adapters should report partial success when they can fetch some items but not all metadata.
+- Adapters should hide source-specific parsing details from the UI.
+- The coordinator, not each adapter, should decide whether to send items to LLM analysis.
+
+### 10.5 LLM Processing Strategy
+
+The LLM is a bottleneck, so the product should treat analysis as an asynchronous enrichment step.
+
+Recommended rules:
+- Analyze only new or changed items.
+- Cache LLM outputs by item fingerprint plus prompt version.
+- Limit input length by trimming snippets or abstracts before sending to the LLM.
+- Use strict JSON output and validate it before storing.
+- If JSON parsing fails, retry once with a repair prompt or mark analysis as failed.
+- If analysis fails, keep the raw item visible in Feed with a clear `summary unavailable` state.
+- Use deterministic settings when possible, such as low temperature, so scores are stable during the demo.
+
+Prompt versioning:
+- Store a simple `scoreVersion`, for example `radar-v1`.
+- When the prompt changes, only re-analyze items if needed.
+
+Recommended batch policy:
+- For the demo, analyze the top 20 to 30 newest or most promising items first.
+- Defer low-quality or duplicate-looking items.
+- Today should wait only for the first useful set of analyzed cards, not the full queue.
+
+### 10.6 Data Storage and Caching
+
+Minimum local storage:
+- Keywords and source settings.
+- Saved item IDs.
+- Normalized fetched items.
+- LLM analysis result.
+- Last successful refresh metadata.
+
+Cache policy:
+- Keep recent items for 7 to 14 days.
+- Re-fetch a source if its last successful fetch is older than 30 to 60 minutes during active demo use.
+- Preserve saved items even if they age out of the normal feed cache.
+- Clear cache from Settings should remove feed data but should not delete keyword settings unless the user confirms.
+
+Deduplication policy:
+- Primary key: source-specific external ID when available.
+- Secondary key: normalized canonical URL.
+- Fallback key: normalized title plus source type plus publish date.
+- If two sources point to the same paper or repo, prefer the richer metadata but keep source attribution.
+
+### 10.7 API and Security Notes
+
+If a backend is added, keep the API small:
+
+```text
+GET /health
+GET /sources/status
+POST /refresh
+GET /items?keyword=&source=&sort=
+POST /items/{id}/analyze
+POST /keywords/suggest
+```
+
+Security requirements:
+- Never expose the LLM API key in a committed client file.
+- If the mobile app calls the LLM directly for demo convenience, use local environment configuration and document that this is not production-safe.
+- Add request logging without storing full API keys or full private prompts.
+- Apply simple rate limiting to refresh and analysis endpoints if a backend exists.
+
+### 10.8 Error Handling and Degradation
+
+The user should always understand what happened.
+
+Failure examples and expected behavior:
+- arXiv succeeds, GitHub fails: show arXiv results and mark GitHub as failed.
+- LLM times out: show raw cards in Feed and let the user retry analysis.
+- WeChat source is blocked: use cached sample and label it as cached demo data.
+- No items match a keyword: show an empty state with a suggestion to broaden the keyword.
+- API key missing: Settings should show configuration error before the user starts a refresh.
+
+Do not use a single global error modal for all refresh problems. Source-level and card-level errors are easier to recover from and make the demo feel more robust.
+
+### 10.9 Testing and Verification
+
+Recommended tests:
+- Unit tests for keyword matching, deduplication, score filtering, and source adapter normalization.
+- Mock network tests for each stable source adapter.
+- LLM client tests using mocked JSON responses and malformed responses.
+- UI state tests for loading, partial success, empty, cached, saved, and failed states.
+- Manual demo test with network disabled after cached data has been loaded.
+
+Acceptance checklist before demo:
+- App opens with no crash when API key is missing.
+- App can fetch at least three real source categories.
+- A failed source does not block Today or Feed.
+- Pull-to-refresh updates statuses progressively.
+- Saved items remain after app restart.
+- LLM summaries appear on cards and detail pages.
+- Demo can still run with cached fallback data if one external source is unavailable.
+
+### 10.10 Technical Risks and Suggestions
+
+Key risks:
+- WeChat and some Chinese media pages may be hard to crawl reliably.
+- GitHub and LLM APIs may hit rate limits during repeated demo rehearsals.
+- LLM latency may make the app feel frozen if analysis blocks rendering.
+- Source result quality may vary by keyword.
+- Client-side API keys are risky if the app is shared publicly.
+
+Suggestions:
+- Treat WeChat as an optional enhanced source, not a critical path.
+- Make arXiv, GitHub, and RSS/news the reliable demo foundation.
+- Build a visible source-health module early because it helps both users and presenters explain partial failures.
+- Implement cached fallback data before adding the least stable source.
+- Separate fetch status from analysis status in the data model so the UI can show useful progress.
+- Keep the first version's ranking simple: source metadata pre-score plus LLM relevance score. Avoid complex personalization until the basic loop works smoothly.
+
+## 11. Demo Video Script
 
 Length: 1 to 2 minutes.
 
@@ -441,7 +689,7 @@ Suggested flow:
 Key message for narration:
 Research Radar helps developers and researchers track fast-moving topics by turning scattered online updates into ranked, summarized, and saved intelligence cards.
 
-## 11. Success Criteria
+## 12. Success Criteria
 
 Product success for course demo:
 - The app clearly looks and behaves like a mobile app, not only a static prototype.
@@ -457,3 +705,8 @@ Technical success:
 - Unstable sources do not block the whole app.
 - The same data model supports all content categories.
 - The app can run from the submitted source code with a clear README.
+- Today and Feed can show partial results while other sources or LLM analysis are still running.
+- Refresh progress is visible per source.
+- Cached fallback data is clearly labeled when used.
+- Saved items persist across app restart.
+- Source fetching, LLM analysis, and UI rendering are separated enough to test independently.
