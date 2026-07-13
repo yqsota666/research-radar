@@ -1,0 +1,12 @@
+.superpowers/
+.env
+.env.*
+!.env.example
+node_modules/
+build/
+dist/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+android/.gradle/
+ios/Pods/
