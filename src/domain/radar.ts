@@ -8,6 +8,8 @@ import type {
 } from './types';
 
 const sourceTypes: SourceType[] = ['news', 'paper', 'github', 'huggingface', 'wechat'];
+const topMatchLimit = 5;
+const diversityScoreWindow = 10;
 
 export function createInitialState(now = new Date().toISOString()): AppState {
   return {
@@ -65,10 +67,10 @@ export function getTodaySummary(state: AppState): TodaySummary {
     {} as Record<SourceType, number>
   );
 
-  const topMatches = state.items
+  const eligibleTopMatches = state.items
     .filter((item) => item.relevanceScore >= 80 && item.analysisStatus === 'done')
-    .toSorted((left, right) => right.relevanceScore - left.relevanceScore)
-    .slice(0, 5);
+    .toSorted((left, right) => right.relevanceScore - left.relevanceScore);
+  const topMatches = selectDiverseTopMatches(eligibleTopMatches);
 
   return {
     totalItems: state.items.length,
@@ -76,6 +78,36 @@ export function getTodaySummary(state: AppState): TodaySummary {
     topMatches,
     activeKeywordCount: state.keywords.filter((keyword) => keyword.enabled).length
   };
+}
+
+function selectDiverseTopMatches(sortedItems: RadarItem[]): RadarItem[] {
+  if (sortedItems.length === 0) {
+    return sortedItems;
+  }
+
+  const selected: RadarItem[] = [sortedItems[0]];
+  const selectedIds = new Set([sortedItems[0].id]);
+  const representedKeywords = new Set([sortedItems[0].matchedKeyword]);
+  const highestScore = sortedItems[0].relevanceScore;
+
+  for (const item of sortedItems) {
+    if (selected.length >= topMatchLimit) break;
+    if (selectedIds.has(item.id)) continue;
+    if (representedKeywords.has(item.matchedKeyword)) continue;
+    if (item.relevanceScore < highestScore - diversityScoreWindow) continue;
+    selected.push(item);
+    selectedIds.add(item.id);
+    representedKeywords.add(item.matchedKeyword);
+  }
+
+  for (const item of sortedItems) {
+    if (selected.length >= topMatchLimit) break;
+    if (selectedIds.has(item.id)) continue;
+    selected.push(item);
+    selectedIds.add(item.id);
+  }
+
+  return selected;
 }
 
 export function toggleSaved(items: RadarItem[], itemId: string): RadarItem[] {
