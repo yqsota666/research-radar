@@ -84,6 +84,26 @@ describe('live refresh coordinator', () => {
     expect(refreshed.items.some((item) => item.title === 'live-agent/runtime')).toBe(true);
   });
 
+  it('isolates an adapter exception so the remaining sources still refresh', async () => {
+    const throwingAdapter: SourceAdapter = {
+      sourceType: 'paper',
+      sourceName: 'arXiv',
+      async fetch() {
+        throw new Error('network stalled');
+      }
+    };
+
+    const refreshed = await runLiveRefresh(createInitialState(), {
+      adapters: [successAdapter, throwingAdapter],
+      now: '2026-07-13T07:00:00.000Z'
+    });
+
+    expect(refreshed.sourceStatuses.paper.status).toBe('failed');
+    expect(refreshed.sourceStatuses.paper.message).toContain('network stalled');
+    expect(refreshed.items.some((item) => item.title === 'live-agent/runtime')).toBe(true);
+  });
+
+
   it('refreshes every enabled keyword using only that keyword selected sources', async () => {
     const calls: Array<{ sourceName: string; keyword: string }> = [];
     const githubAdapter: SourceAdapter = {

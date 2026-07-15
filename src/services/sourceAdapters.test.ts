@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { arxivAdapter, githubAdapter, newsAdapter } from './sourceAdapters';
 
 function response(body: string, ok = true): Response {
@@ -6,6 +6,10 @@ function response(body: string, ok = true): Response {
 }
 
 describe('source adapters', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('normalizes arXiv XML search results', async () => {
     const fetcher = async () =>
       response(`
@@ -102,6 +106,29 @@ describe('source adapters', () => {
     expect(result.items).toEqual([]);
     expect(result.errorMessage).toContain('GitHub');
   });
+
+  it('aborts slow source requests with a short timeout', async () => {
+    vi.useFakeTimers();
+    const fetcher = vi.fn(
+      (_input: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new DOMException('Timed out', 'AbortError')));
+        })
+    );
+
+    const pending = githubAdapter.fetch('LLM Agent', [], {
+      fetcher,
+      now: '2026-07-13T08:00:00.000Z',
+      timeoutMs: 25
+    });
+    await vi.advanceTimersByTimeAsync(25);
+    const result = await pending;
+
+    expect(result.status).toBe('failed');
+    expect(result.errorMessage).toContain('timed out');
+    expect(fetcher.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+  });
+
 
   it('returns a cached paper fallback when arXiv is unavailable in the browser', async () => {
     const fetcher = async () => {

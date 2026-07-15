@@ -12,6 +12,7 @@ export interface LiveRefreshOptions {
   adapters?: SourceAdapter[];
   now?: string;
   fetcher?: typeof fetch;
+  timeoutMs?: number;
 }
 
 interface RefreshJob {
@@ -124,6 +125,18 @@ function fallbackItems(now: string): RadarItem[] {
   return createDemoItems(now).filter((item) => item.isCachedSample || item.sourceType === 'huggingface');
 }
 
+function failedResultFromException(job: RefreshJob, fetchedAt: string, error: unknown): SourceFetchResult {
+  const message = error instanceof Error ? error.message : String(error);
+  return {
+    sourceType: job.adapter.sourceType,
+    sourceName: job.adapter.sourceName,
+    items: [],
+    fetchedAt,
+    status: 'failed',
+    errorMessage: `${job.adapter.sourceName} fetch failed: ${message}`
+  };
+}
+
 export async function runLiveRefresh(
   state: AppState,
   options: LiveRefreshOptions = {}
@@ -148,14 +161,25 @@ export async function runLiveRefresh(
   );
 
   const results = await Promise.all(
-    refreshJobs.map(async (job) => ({
-      keyword: job.keyword,
-      relatedTerms: job.relatedTerms,
-      result: await job.adapter.fetch(job.keyword, job.relatedTerms, {
-        now,
-        fetcher: options.fetcher
-      })
-    }))
+    refreshJobs.map(async (job) => {
+      try {
+        return {
+          keyword: job.keyword,
+          relatedTerms: job.relatedTerms,
+          result: await job.adapter.fetch(job.keyword, job.relatedTerms, {
+            now,
+            fetcher: options.fetcher,
+            timeoutMs: options.timeoutMs
+          })
+        };
+      } catch (error) {
+        return {
+          keyword: job.keyword,
+          relatedTerms: job.relatedTerms,
+          result: failedResultFromException(job, now, error)
+        };
+      }
+    })
   );
   const liveItems = results.flatMap(({ result, keyword, relatedTerms }) =>
     result.items.map((item) => rawToRadarItem(item, keyword, relatedTerms, result.fetchedAt))

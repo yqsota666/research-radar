@@ -25,6 +25,7 @@ export interface SourceFetchResult {
 export interface SourceFetchOptions {
   fetcher?: typeof fetch;
   now?: string;
+  timeoutMs?: number;
 }
 
 export interface SourceAdapter {
@@ -43,6 +44,31 @@ function textOf(parent: Element, selector: string): string {
 
 function buildQuery(keyword: string, relatedTerms: string[]): string {
   return [keyword, ...relatedTerms].filter(Boolean).join(' OR ');
+}
+
+const defaultTimeoutMs = 8000;
+
+async function fetchWithTimeout(
+  fetcher: typeof fetch,
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  timeoutMs = defaultTimeoutMs
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetcher(input, {
+      ...init,
+      signal: controller.signal
+    });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error(`request timed out after ${timeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
 
 function failure(
@@ -107,8 +133,11 @@ export const arxivAdapter: SourceAdapter = {
     try {
       const query = encodeURIComponent(buildQuery(keyword, relatedTerms));
       const result = await ensureOk(
-        await fetcher(
-          `https://export.arxiv.org/api/query?search_query=all:${query}&start=0&max_results=8&sortBy=submittedDate&sortOrder=descending`
+        await fetchWithTimeout(
+          fetcher,
+          `https://export.arxiv.org/api/query?search_query=all:${query}&start=0&max_results=8&sortBy=submittedDate&sortOrder=descending`,
+          {},
+          options.timeoutMs
         ),
         'arXiv'
       );
@@ -150,7 +179,12 @@ export const githubAdapter: SourceAdapter = {
     try {
       const query = encodeURIComponent(`${buildQuery(keyword, relatedTerms)} sort:updated-desc`);
       const result = await ensureOk(
-        await fetcher(`https://api.github.com/search/repositories?q=${query}&per_page=8`),
+        await fetchWithTimeout(
+          fetcher,
+          `https://api.github.com/search/repositories?q=${query}&per_page=8`,
+          {},
+          options.timeoutMs
+        ),
         'GitHub'
       );
       const json = (await result.json()) as {
@@ -196,7 +230,12 @@ export const newsAdapter: SourceAdapter = {
     try {
       const query = encodeURIComponent(buildQuery(keyword, relatedTerms));
       const result = await ensureOk(
-        await fetcher(`https://hn.algolia.com/api/v1/search?query=${query}&tags=story`),
+        await fetchWithTimeout(
+          fetcher,
+          `https://hn.algolia.com/api/v1/search?query=${query}&tags=story`,
+          {},
+          options.timeoutMs
+        ),
         'Hacker News'
       );
       const json = (await result.json()) as {
