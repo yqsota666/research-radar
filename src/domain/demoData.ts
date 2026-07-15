@@ -185,7 +185,7 @@ export function createDemoItems(now: string): RadarItem[] {
       ...base,
       id: 'wechat-rag-industry',
       externalId: 'cached:machine-heart-rag',
-      title: '机器之心：RAG 应用进入工程化深水区',
+      title: 'Machine Heart: RAG applications move deeper into production',
       sourceType: 'wechat',
       sourceName: 'Machine Heart cached sample',
       url: 'https://www.jiqizhixin.com/',
@@ -195,7 +195,7 @@ export function createDemoItems(now: string): RadarItem[] {
         'Cached Chinese AI media sample discussing RAG system reliability and deployment.',
       summary:
         'Chinese AI media coverage of RAG reliability, evaluation, and deployment practice.',
-      tags: ['RAG', '工程化', 'cached sample'],
+      tags: ['RAG', 'production', 'cached sample'],
       relevanceScore: 79,
       reason:
         'Useful Chinese-language context, but marked as cached because direct crawling is unstable.',

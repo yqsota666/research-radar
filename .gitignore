@@ -1,5 +1,7 @@
 .superpowers/
 .worktrees/
+.generated-ui/
+Generate designs from markdown.zip
 .env
 .env.*
 !.env.example

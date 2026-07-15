@@ -1633,3 +1633,105 @@ Remaining issues and user-experience risks:
 
 Overall judgment:
 The latest changes make the P0/P1 core and the most visible demo polish much more reasonable. Today now proves multi-keyword ranking, Settings exposes gateway checking, and mobile source filters are discoverable. The main remaining gaps are P2 interaction features: source badge filtering, keyword management, and clear-cache confirmation.
+
+## 20. Deep Multi-Round Retest Notes - 2026-07-13
+
+Retest scope:
+This round intentionally went wider than the latest fix list. It covered first-open Today information, refresh behavior, Keywords edge cases, Feed filtering/search/detail/save, Settings/cache clearing, and mobile layout at `390 x 844`.
+
+Retest environment:
+- Implementation retested under `.worktrees/research-radar-app`.
+- Commands run: `npm test -- --run` and `npm run build`.
+- Local app tested through Vite at `http://127.0.0.1:5174/`.
+- Browser-tested desktop viewport `1280 x 720` and mobile viewport `390 x 844`.
+
+Verification results:
+- Automated tests passed: 9 test files, 41 tests.
+- Production build passed.
+- Refresh completed in about 1.0 to 1.6 seconds during this run after cached/local state was already warm.
+- Mobile Feed source tabs were visible in two rows and had no horizontal overflow in the measured mobile pass.
+- Feed filtering by Paper worked, but the visible text is `Paper` while the accessible label is `Papers`.
+- Detail open, Save, and Saved persistence within the session worked.
+
+High-priority issues:
+
+1. High - Keywords allows duplicate subscriptions.
+   - Reproduction: Open Keywords, add `RAG` again.
+   - Actual result: A second `RAG` card appears, and Today active keyword chips show `RAG` twice.
+   - User impact: Users can accidentally create duplicate subscriptions, making Today look broken and making refresh behavior harder to understand.
+   - Suggested fix: Normalize keyword terms case-insensitively and trim whitespace before adding. If the keyword already exists, show a short inline message such as `Keyword already exists` and do not add a duplicate.
+
+2. High - Keywords page still lacks core management controls.
+   - Evidence: Keywords still only has one text input and an Add keyword button. No pause switch, delete action, source selector, or suggestion accept/ignore controls were present.
+   - User impact: Users can add topics but cannot correct mistakes, pause noisy topics, remove duplicates, or change source categories.
+   - Suggested fix: Add at least delete and enable/pause controls first. Per-keyword source editing can follow, but delete/pause is needed now because duplicate keywords are easy to create.
+
+3. High - Clear feed cache leaves source status stale and misleading.
+   - Reproduction: Save one item, open Settings, click Clear feed cache, then return to Today.
+   - Actual result: Metrics changed to `Total 1`, but source statuses still showed the previous refresh state such as `Technology News fetched`, `GitHub fetched`, and old updated times.
+   - User impact: Today says there is only one item while source health implies a full fresh multi-source result set. This is confusing and can mislead a demo audience.
+   - Suggested fix: After clearing feed cache, reset source statuses to a `cached`, `cleared`, or `idle` state with a message like `Feed cache cleared; refresh to fetch new results`.
+
+Medium-priority issues:
+
+4. Medium - Today first-open information can be stale and overconfident.
+   - Evidence: On first open, Today showed cached local results and old source timestamps before a new refresh. It did not clearly label that these were previous-session cached results.
+   - User impact: Users may believe they are looking at current results when the page is actually showing persisted local state.
+   - Suggested fix: Add a visible `Last updated` / `Showing cached results` line near the refresh control, especially when data is loaded from local storage.
+
+5. Medium - Today does not show active keyword count even though the design calls for it.
+   - Evidence: Today showed chips but no visible active keyword count in the header/hero. A text scan did not find active keyword count wording.
+   - User impact: With many chips or duplicated keywords, users have no quick count and may miss configuration problems.
+   - Suggested fix: Add `3 active keywords` or similar near the app title/refresh control.
+
+6. Medium - Today metric cards omit Hugging Face and WeChat counts.
+   - Evidence: Metric cards showed only `Total`, `Papers`, `GitHub`, and `News`; source statuses include Hugging Face and WeChat but metrics do not.
+   - User impact: The dashboard is inconsistent with the declared source categories and under-reports cached/fallback content.
+   - Suggested fix: Add compact `HF` and `WeChat` metric cards or a source distribution row that covers every source category.
+
+7. Medium - Refresh is an icon-only button with no visible label.
+   - Evidence: The refresh control is accessible as `Refresh results`, but visible button text is empty.
+   - User impact: Sighted users may not immediately understand the primary action on the opening page, especially during a presentation.
+   - Suggested fix: Show text such as `Refresh` next to the icon on desktop and optionally keep icon-only on very small mobile screens with a tooltip/title.
+
+8. Medium - Search still has no one-tap clear affordance.
+   - Evidence: After entering `robotics`, no clear button candidate was present.
+   - User impact: Mobile users must manually delete search text to return to the full list.
+   - Suggested fix: Show a clear icon/button inside the search field when `query` is non-empty.
+
+9. Medium - Source badge filtering is still not implemented.
+   - Evidence: Source badges remain static card labels; filtering is only possible through the segmented control.
+   - User impact: Users lose the card-level shortcut described in the original design.
+   - Suggested fix: Render source badges as buttons in Feed cards and update the active source filter on tap.
+
+10. Medium - Clear feed cache still has no confirmation or success feedback.
+    - Evidence: Clicking Clear feed cache produced no JavaScript dialog, no in-page dialog, no alert, and no toast/status message.
+    - User impact: Users may not realize what happened and accidental cache clearing is not protected.
+    - Suggested fix: Add a confirmation dialog and a short success message.
+
+Lower-priority polish issues:
+
+11. Low - Paper filter visible text and accessible label are inconsistent.
+    - Evidence: The visible button text is `Paper`, but its accessible name is `Papers`.
+    - User impact: This is minor for visual users but makes automated/accessibility testing less intuitive.
+    - Suggested fix: Align both visible text and aria label, for example use `Papers` everywhere or `Paper` everywhere.
+
+12. Low - Detail recommendation reason can repeat matched terms.
+    - Evidence: A detail page showed `Matches robotics agents through agents, agents, agents and comes from GitHub`.
+    - User impact: The recommendation reason feels machine-generated and low quality.
+    - Suggested fix: Deduplicate matched terms before rendering analysis reasons.
+
+13. Low - Non-English keyword suggestions mix languages awkwardly.
+    - Evidence: Adding `中文 智能体` produced suggestions such as `中文 智能体 survey`, `中文 智能体 benchmark`, and `中文 智能体 implementation`.
+    - User impact: This is understandable but unpolished for Chinese users.
+    - Suggested fix: Either keep suggestions language-neutral (`survey`, `benchmark`) with a note, or provide localized suggestions for CJK input.
+
+What is working well after the deeper pass:
+- Multi-keyword refresh works after pressing refresh.
+- Top Matches diversity is better after a current refresh.
+- Feed source filtering works through the segmented control.
+- Detail, Save, and Saved flow works in-session.
+- Mobile Feed source tabs are discoverable and had no measured horizontal overflow in this pass.
+
+Overall judgment:
+The app is much closer to a credible demo, but the Keywords page and Today opening screen still have enough user-facing problems that they should not be treated as polished. The highest-impact next fixes are keyword duplicate prevention plus delete/pause controls, then Today information consistency after cached load and cache clearing.
