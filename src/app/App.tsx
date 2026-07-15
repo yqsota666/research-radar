@@ -745,7 +745,7 @@ export default function App({
     <main className="min-h-screen bg-[#101112] font-[Manrope] text-[#f2f1ec] md:flex md:items-center md:justify-center md:bg-[radial-gradient(circle_at_50%_0%,#26332f_0%,#101112_48%)]">
       <div className="relative mx-auto min-h-screen w-full max-w-[430px] overflow-hidden bg-[linear-gradient(180deg,#151617_0%,#101112_36%,#101112_100%)] shadow-[0_0_80px_rgba(0,0,0,.55)] md:min-h-[860px] md:rounded-[34px] md:border md:border-white/[0.1]">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-[radial-gradient(ellipse_at_top,rgba(168,209,193,.07),transparent_65%)]" />
-        <div className="relative px-5 pb-28 pt-12">
+        <div className="relative px-5 pb-8 pt-12">
           {detail ? (
             <Detail
               item={detail}
@@ -774,7 +774,7 @@ export default function App({
         {!detail && (
           <nav
             aria-label="Main navigation"
-            className="absolute inset-x-0 bottom-0 flex h-[82px] items-start justify-around border-t border-white/[0.07] bg-[#151718]/95 px-8 pt-3 backdrop-blur-xl"
+            className="relative flex h-[82px] items-start justify-around border-t border-white/[0.07] bg-[#151718]/95 px-8 pt-3 backdrop-blur-xl"
           >
             {(
               [

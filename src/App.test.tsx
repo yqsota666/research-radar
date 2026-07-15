@@ -26,6 +26,7 @@ describe('Research Radar mobile app', () => {
     render(<App />);
 
     const nav = screen.getByRole('navigation', { name: 'Main navigation' });
+    expect(nav.className).not.toMatch(/\b(?:absolute|fixed|sticky|bottom-0)\b/);
     expect(within(nav).getByRole('button', { name: 'Today' })).toBeInTheDocument();
     expect(within(nav).getByRole('button', { name: 'Library' })).toBeInTheDocument();
     expect(within(nav).getByRole('button', { name: 'Settings' })).toBeInTheDocument();
