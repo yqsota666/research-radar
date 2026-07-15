@@ -23,10 +23,13 @@ describe('Research Radar mobile app', () => {
   });
 
   it('keeps the main navigation to Today, Library, and Settings', () => {
-    render(<App />);
+    const { container } = render(<App />);
 
     const nav = screen.getByRole('navigation', { name: 'Main navigation' });
-    expect(nav.className).not.toMatch(/\b(?:absolute|fixed|sticky|bottom-0)\b/);
+    expect(container.querySelector('main > div')).toBeInTheDocument();
+    expect(nav.className).toMatch(/\bfixed\b/);
+    expect(nav.className).toMatch(/\bbottom-8\b/);
+    expect(nav.className).not.toMatch(/\b(?:absolute|sticky|bottom-0)\b/);
     expect(within(nav).getByRole('button', { name: 'Today' })).toBeInTheDocument();
     expect(within(nav).getByRole('button', { name: 'Library' })).toBeInTheDocument();
     expect(within(nav).getByRole('button', { name: 'Settings' })).toBeInTheDocument();
@@ -81,7 +84,7 @@ describe('Research Radar mobile app', () => {
     await user.click(screen.getByRole('button', { name: 'Add keyword' }));
     expect(screen.getByText('multi-agent')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    await user.click(screen.getByRole('button', { name: 'Back to settings' }));
     await user.click(screen.getByRole('button', { name: 'Sources' }));
     expect(screen.getByText('Machine Heart / WeChat')).toBeInTheDocument();
     expect(screen.getAllByText(/cached/i).length).toBeGreaterThan(0);

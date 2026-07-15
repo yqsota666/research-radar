@@ -204,6 +204,34 @@ function SignalCard({ item, onOpen }: { item: RadarItem; onOpen: () => void }) {
   );
 }
 
+function MainNavigation({ tab, navigate }: { tab: Tab; navigate: (next: Tab) => void }) {
+  return (
+    <nav
+      aria-label="Main navigation"
+      className="fixed bottom-8 left-1/2 z-50 flex h-[82px] w-[calc(100%-40px)] max-w-[390px] -translate-x-1/2 items-start justify-around rounded-lg border border-white/[0.07] bg-[#151718]/92 px-6 pt-3 shadow-[0_18px_42px_rgba(0,0,0,.32)] backdrop-blur-xl"
+    >
+      {(
+        [
+          { id: 'today', label: 'Today', icon: Sparkles },
+          { id: 'library', label: 'Library', icon: LibraryBig },
+          { id: 'settings', label: 'Settings', icon: Settings2 }
+        ] as const
+      ).map(({ id, label, icon: Icon }) => (
+        <button
+          key={id}
+          onClick={() => navigate(id)}
+          className={`flex min-w-16 flex-col items-center gap-1.5 text-[10px] transition ${tab === id ? 'text-[#b9dccc]' : 'text-[#737975]'}`}
+        >
+          <span className={`flex size-8 items-center justify-center rounded-lg ${tab === id ? 'bg-[#9fc9b9]/12' : ''}`}>
+            <Icon size={18} strokeWidth={tab === id ? 2 : 1.65} />
+          </span>
+          {label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 function Detail({ item, onBack, onSave }: { item: RadarItem; onBack: () => void; onSave: () => void }) {
   return (
     <div className="animate-in fade-in slide-in-from-right-2 duration-300 pb-24">
@@ -253,11 +281,13 @@ function Detail({ item, onBack, onSave }: { item: RadarItem; onBack: () => void;
 function Today({
   state,
   openDetail,
-  autoRefreshEnabled
+  autoRefreshEnabled,
+  navigation
 }: {
   state: AppState;
   openDetail: (item: RadarItem) => void;
   autoRefreshEnabled: boolean;
+  navigation: ReactNode;
 }) {
   const summary = useMemo(() => getTodaySummary(state), [state]);
   const activeKeywords = state.keywords.filter((keyword) => keyword.enabled).slice(0, 5);
@@ -278,6 +308,7 @@ function Today({
           </div>
         </div>
       </header>
+      {navigation}
       <section className="mt-9 rounded-lg border border-[#a8d1c1]/15 bg-[radial-gradient(circle_at_82%_15%,rgba(121,179,156,.15),transparent_38%),linear-gradient(135deg,rgba(255,255,255,.055),rgba(255,255,255,.015))] p-4">
         <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.15em] text-[#a8d1c1]">
           <Sparkles size={12} /> Today&apos;s signal
@@ -312,7 +343,8 @@ function Library({
   items,
   filter,
   setFilter,
-  openDetail
+  openDetail,
+  navigation
 }: {
   view: View;
   setView: (view: View) => void;
@@ -320,6 +352,7 @@ function Library({
   filter: FeedFilter;
   setFilter: (filter: FeedFilter) => void;
   openDetail: (item: RadarItem) => void;
+  navigation: ReactNode;
 }) {
   const isSaved = view === 'saved';
   const visibleItems = isSaved ? items.filter((item) => item.saved) : getVisibleFeedItems(items, filter);
@@ -337,6 +370,7 @@ function Library({
           </button>
         )}
       </header>
+      {navigation}
       <label className="mt-6 flex h-11 items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 text-[#888f8a]">
         <Search size={16} />
         <input
@@ -460,7 +494,8 @@ function Settings({
   setState,
   llmStatus,
   settings,
-  setSettings
+  setSettings,
+  navigation
 }: {
   view: View;
   setView: (view: View) => void;
@@ -469,6 +504,7 @@ function Settings({
   llmStatus: ReturnType<typeof getLlmConfigStatus>;
   settings: RadarSettings;
   setSettings: React.Dispatch<React.SetStateAction<RadarSettings>>;
+  navigation: ReactNode;
 }) {
   if (view === 'keywords') return <Keywords state={state} setState={setState} onBack={() => setView('main')} />;
   if (view === 'sources') return <Sources state={state} onBack={() => setView('main')} />;
@@ -479,6 +515,7 @@ function Settings({
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#89908c]">Research Radar</p>
         <h1 className="mt-1 font-serif text-[31px] leading-none text-[#f3f1e9]">Settings</h1>
       </header>
+      {navigation}
       <div className="mt-8 space-y-6">
         <section>
           <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.15em] text-[#7c847f]">Radar</p>
@@ -740,12 +777,13 @@ export default function App({
   const toggleSave = (itemId: string) => {
     setState((current) => ({ ...current, items: toggleSaved(current.items, itemId) }));
   };
+  const navigation = !detail ? <MainNavigation tab={tab} navigate={navigate} /> : null;
 
   return (
     <main className="min-h-screen bg-[#101112] font-[Manrope] text-[#f2f1ec] md:flex md:items-center md:justify-center md:bg-[radial-gradient(circle_at_50%_0%,#26332f_0%,#101112_48%)]">
-      <div className="relative mx-auto min-h-screen w-full max-w-[430px] overflow-hidden bg-[linear-gradient(180deg,#151617_0%,#101112_36%,#101112_100%)] shadow-[0_0_80px_rgba(0,0,0,.55)] md:min-h-[860px] md:rounded-[34px] md:border md:border-white/[0.1]">
+      <div className="relative mx-auto min-h-screen w-full max-w-[430px] bg-[linear-gradient(180deg,#151617_0%,#101112_36%,#101112_100%)] shadow-[0_0_80px_rgba(0,0,0,.55)] md:min-h-[860px] md:rounded-[34px] md:border md:border-white/[0.1]">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-[radial-gradient(ellipse_at_top,rgba(168,209,193,.07),transparent_65%)]" />
-        <div className="relative px-5 pb-8 pt-12">
+        <div className="relative px-5 pb-40 pt-12">
           {detail ? (
             <Detail
               item={detail}
@@ -756,9 +794,9 @@ export default function App({
               }}
             />
           ) : tab === 'today' ? (
-            <Today state={state} openDetail={openDetail} autoRefreshEnabled={settings.autoRefresh} />
+            <Today state={state} openDetail={openDetail} autoRefreshEnabled={settings.autoRefresh} navigation={navigation} />
           ) : tab === 'library' ? (
-            <Library view={view} setView={setView} items={state.items} filter={filter} setFilter={setFilter} openDetail={openDetail} />
+            <Library view={view} setView={setView} items={state.items} filter={filter} setFilter={setFilter} openDetail={openDetail} navigation={navigation} />
           ) : (
             <Settings
               view={view}
@@ -768,34 +806,10 @@ export default function App({
               llmStatus={llmStatus}
               settings={settings}
               setSettings={setSettings}
+              navigation={navigation}
             />
           )}
         </div>
-        {!detail && (
-          <nav
-            aria-label="Main navigation"
-            className="relative flex h-[82px] items-start justify-around border-t border-white/[0.07] bg-[#151718]/95 px-8 pt-3 backdrop-blur-xl"
-          >
-            {(
-              [
-                { id: 'today', label: 'Today', icon: Sparkles },
-                { id: 'library', label: 'Library', icon: LibraryBig },
-                { id: 'settings', label: 'Settings', icon: Settings2 }
-              ] as const
-            ).map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => navigate(id)}
-                className={`flex min-w-16 flex-col items-center gap-1.5 text-[10px] transition ${tab === id ? 'text-[#b9dccc]' : 'text-[#737975]'}`}
-              >
-                <span className={`flex size-8 items-center justify-center rounded-lg ${tab === id ? 'bg-[#9fc9b9]/12' : ''}`}>
-                  <Icon size={18} strokeWidth={tab === id ? 2 : 1.65} />
-                </span>
-                {label}
-              </button>
-            ))}
-          </nav>
-        )}
       </div>
     </main>
   );
